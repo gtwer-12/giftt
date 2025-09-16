@@ -179,10 +179,32 @@ def pay_item(call):
         bot.answer_callback_query(call.id, "❌ Coin yetarli emas!")
         return
 
-    
+    # Mahsulotlar (shop menyusidagi bilan bir xil)
+    products = [
+        ("🩷", 30),
+        ("🐻", 35),
+        ("🌹", 50),
+        ("🎂", 70),
+        ("🚀", 80),
+        ("💎", 300),
+    ]
+    item_name, _ = products[int(item_id) - 1]
+
+    # Coinni kamaytirish
     update_coins(call.from_user.id, -price)
 
-    bot.send_message(call.message.chat.id, f"✅ To‘lov muvaffaqiyatli! Siz {price} coin sarfladingiz.")
+    # Buyurtmani bazaga yozish
+    date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute(
+        "INSERT INTO orders (user_id, item_name, price, date) VALUES (?, ?, ?, ?)",
+        (call.from_user.id, item_name, price, date)
+    )
+    conn.commit()
+
+    bot.send_message(
+        call.message.chat.id,
+        f"✅ To‘lov muvaffaqiyatli!\nSiz {item_name} uchun {price} coin sarfladingiz."
+    )
 
 @bot.message_handler(func=lambda m: m.text == "👤 Mening profilim")
 def my_profile(msg):
@@ -261,11 +283,22 @@ def admin_block_user(msg):
 def admin_orders(msg):
     cursor.execute("SELECT user_id, item_name, price, date FROM orders ORDER BY date DESC LIMIT 20")
     rows = cursor.fetchall()
-    text = "📦 Buyurtmalar:\n"
+    if not rows:
+        bot.send_message(msg.chat.id, "📦 Buyurtmalar yo'q.")
+        return
+
+    text = "📦 So‘nggi buyurtmalar:\n\n"
     for row in rows:
-        url = get_url_by_tg_id(row[0])
-        text += f"{url} - {row[1]} ({row[2]} coin) {row[3]}\n"
-    bot.send_message(msg.chat.id, text if rows else "📦 Buyurtmalar yo'q.")
+        user_id, item_name, price, date = row
+        cursor.execute("SELECT tg_username, tg_url FROM users WHERE tg_id=?", (user_id,))
+        user_data = cursor.fetchone()
+        if user_data:
+            tg_username, tg_url = user_data
+            text += f"👤 {tg_username} ({tg_url})\n🛍 {item_name} - {price} coin\n🕒 {date}\n\n"
+        else:
+            text += f"👤 {user_id}\n🛍 {item_name} - {price} coin\n🕒 {date}\n\n"
+
+    bot.send_message(msg.chat.id, text)
 
 @bot.message_handler(func=lambda m: m.text == "📢 Xabar yuborish" and m.from_user.id == ADMIN_ID)
 def admin_broadcast(msg):
