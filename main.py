@@ -290,8 +290,12 @@ def admin_orders(msg):
     text = "📦 So‘nggi buyurtmalar:\n\n"
     for row in rows:
         user_id, item_name, price, date = row
-        cursor.execute("SELECT tg_username, tg_url FROM users WHERE tg_id=?", (user_id,))
-        user_data = cursor.fetchone()
+        # Yangi cursor yaratish
+        cur2 = conn.cursor()
+        cur2.execute("SELECT tg_username, tg_url FROM users WHERE tg_id=?", (user_id,))
+        user_data = cur2.fetchone()
+        cur2.close()
+        
         if user_data:
             tg_username, tg_url = user_data
             text += f"👤 {tg_username} ({tg_url})\n🛍 {item_name} - {price} coin\n🕒 {date}\n\n"
