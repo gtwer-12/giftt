@@ -1,3 +1,4 @@
+
 import telebot
 from telebot import types
 import sqlite3
@@ -44,6 +45,11 @@ cursor.execute("""CREATE TABLE IF NOT EXISTS orders(
 )""")
 conn.commit()
 
+def get_user_id_by_tg_id(tg_id):
+    cursor.execute("SELECT id FROM users WHERE tg_id=?", (tg_id,))
+    data = cursor.fetchone()
+    return data[0] if data else None
+
 def get_url_by_tg_id(tg_id):
     cursor.execute("SELECT tg_url FROM users WHERE tg_id=?", (tg_id,))
     data = cursor.fetchone()
@@ -52,7 +58,6 @@ def get_url_by_tg_id(tg_id):
 def get_user(tg_id):
     cursor.execute("SELECT * FROM users WHERE tg_id=?", (tg_id,))
     return cursor.fetchone()
-
 
 def add_user(tg_id, username, url, invited_by=None):
     cursor.execute(
@@ -125,6 +130,7 @@ def user_panel(msg):
     markup.add("👤 Mening profilim", "🏆 Reyting")
     bot.send_message(msg.chat.id, "Asosiy menyu:", reply_markup=markup)
 
+
 @bot.message_handler(func=lambda m: m.text == "➕ Do'st qo'shish")
 def add_friend(msg):
     ref_link = f"https://t.me/GiftStartCoinBot?start=ref_{msg.from_user.id}"
@@ -179,7 +185,7 @@ def pay_item(call):
         bot.answer_callback_query(call.id, "❌ Coin yetarli emas!")
         return
 
-    # Mahsulotlar (shop menyusidagi bilan bir xil)
+    # Mahsulotlar
     products = [
         ("🩷", 30),
         ("🐻", 35),
@@ -193,11 +199,14 @@ def pay_item(call):
     # Coinni kamaytirish
     update_coins(call.from_user.id, -price)
 
+    # 🔹 user_id (users jadvalidagi id) ni olish
+    db_user_id = get_user_id_by_tg_id(call.from_user.id)
+
     # Buyurtmani bazaga yozish
     date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     cursor.execute(
         "INSERT INTO orders (user_id, item_name, price, date) VALUES (?, ?, ?, ?)",
-        (call.from_user.id, item_name, price, date)
+        (db_user_id, item_name, price, date)
     )
     conn.commit()
 
@@ -290,11 +299,8 @@ def admin_orders(msg):
     text = "📦 So‘nggi buyurtmalar:\n\n"
     for row in rows:
         user_id, item_name, price, date = row
-        # Yangi cursor yaratish
-        cur2 = conn.cursor()
-        cur2.execute("SELECT tg_username, tg_url FROM users WHERE tg_id=?", (user_id,))
-        user_data = cur2.fetchone()
-        cur2.close()
+        cursor.execute("SELECT tg_username, tg_url FROM users WHERE id=?", (user_id,))
+        user_data = cursor.fetchone()
         
         if user_data:
             tg_username, tg_url = user_data
