@@ -6,7 +6,7 @@ import datetime
 TOKEN = "7822795168:AAE36aTWxXqR2FCj9WpiQWA9gjQBQXFV30A"
 ADMIN_ID = 5119685180
 
-bot = telebot.TeleBot("TOKEN")
+bot = telebot.TeleBot("7822795168:AAE36aTWxXqR2FCj9WpiQWA9gjQBQXFV30A")
 bot.remove_webhook()
 print("Webhook o‘chirildi.")
 
